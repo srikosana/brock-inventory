@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BROCK Storage Inventory · HISD FACE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --teal: #00a3af; --teal-soft: #e6f6f7;
+    --dark-green: #006f5b; --light-green: #6db83d;
+    --dark-grey: #24383c; --red: #d96364; --yellow: #f9d04e;
+    --blue: #4975bd; --purple: #484f99;
+    --bg: #f4f7f8; --card: #ffffff; --border: #e1e8ea;
+    --muted: #6b7d82; --text: #1d2c30;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px; line-height: 1.5; }
+
+  header { background: linear-gradient(135deg, var(--dark-green) 0%, var(--teal) 100%);
+    color: white; padding: 28px 32px 24px; box-shadow: 0 2px 12px rgba(0,111,91,0.15); }
+  .header-inner { max-width: 1400px; margin: 0 auto; display: flex;
+    justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-mark { width: 44px; height: 44px; background: rgba(255,255,255,0.15);
+    border: 1.5px solid rgba(255,255,255,0.4); border-radius: 10px;
+    display: grid; place-items: center; font-family: 'Fraunces', serif;
+    font-weight: 700; font-size: 22px; letter-spacing: -1px; }
+  h1 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 26px;
+    margin: 0; letter-spacing: -0.5px; }
+  .subtitle { font-size: 13px; opacity: 0.85; margin-top: 2px; font-weight: 400; }
+  .meta { text-align: right; font-size: 12px; opacity: 0.85; }
+  .meta strong { font-weight: 600; }
+  .header-actions { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .header-btn { background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.4); color: white;
+    padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    font-weight: 500; transition: background 0.15s; font-family: inherit; }
+  .header-btn:hover { background: rgba(255,255,255,0.32); }
+  .header-btn.primary { background: white; color: var(--dark-green); font-weight: 600; }
+  .header-btn.primary:hover { background: rgba(255,255,255,0.9); }
+  .header-btn.ghost { background: transparent; }
+  .header-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  main { max-width: 1400px; margin: 0 auto; padding: 24px 32px 60px; }
+
+  .config-banner { background: #fff8db; border: 1px solid var(--yellow);
+    border-left: 4px solid var(--yellow); border-radius: 8px;
+    padding: 14px 18px; margin-bottom: 22px; font-size: 13px; color: #5b4a00; }
+  .config-banner code { background: rgba(0,0,0,0.06); padding: 2px 6px;
+    border-radius: 3px; font-size: 12px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px; margin-bottom: 22px; }
+  .kpi { background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 18px; position: relative; overflow: hidden; }
+  .kpi::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--teal); }
+  .kpi.warn::before { background: var(--yellow); }
+  .kpi.danger::before { background: var(--red); }
+  .kpi.success::before { background: var(--light-green); }
+  .kpi-label { font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--muted); font-weight: 600; }
+  .kpi-value { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 500;
+    color: var(--text); margin-top: 4px; letter-spacing: -0.5px; line-height: 1.1; }
+  .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .card { background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 20px; }
+  .card h3 { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+    margin: 0 0 12px; color: var(--dark-grey); text-transform: uppercase;
+    letter-spacing: 0.5px; }
+  .chart-wrap { height: 260px; position: relative; }
+
+  .alerts-card { padding: 0; overflow: hidden; }
+  .alerts-card h3 { padding: 18px 20px 0; margin-bottom: 10px; }
+  .alert-row { display: grid; grid-template-columns: 1fr auto auto;
+    gap: 12px; padding: 10px 20px; border-top: 1px solid var(--border);
+    align-items: center; font-size: 13px; }
+  .alert-row.empty { padding: 24px 20px; color: var(--muted);
+    text-align: center; font-style: italic; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3px; }
+  .pill.out { background: #fde0e1; color: var(--red); }
+  .pill.low { background: #fef3c7; color: #8a6d00; }
+  .alert-qty { font-family: 'Fraunces', serif; font-weight: 500; font-size: 15px; }
+
+  .filter-bar { display: flex; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 12px; align-items: center; }
+  .filter-bar input, .filter-bar select { padding: 7px 11px;
+    border: 1px solid var(--border); border-radius: 6px; font-size: 13px;
+    background: white; font-family: inherit; color: var(--text); }
+  .filter-bar input:focus, .filter-bar select:focus { outline: none;
+    border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+  .filter-bar input { min-width: 220px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; padding: 10px 12px; background: #f8fafb;
+    font-weight: 600; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--muted);
+    border-bottom: 2px solid var(--border); cursor: pointer;
+    user-select: none; position: sticky; top: 0; }
+  thead th:hover { color: var(--teal); }
+  thead th .sort-arrow { opacity: 0.4; margin-left: 3px; }
+  thead th.sorted .sort-arrow { opacity: 1; color: var(--teal); }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tbody tr:hover { background: var(--teal-soft); }
+  .qty-out { color: var(--red); font-weight: 600; }
+  .qty-low { color: #8a6d00; font-weight: 600; }
+  .qty-ok { color: var(--text); }
+
+  .table-scroll { overflow-x: auto; max-height: 480px; overflow-y: auto;
+    border-radius: 6px; }
+
+  .pagination { display: flex; justify-content: space-between;
+    align-items: center; padding-top: 12px; font-size: 12px; color: var(--muted); }
+  .pagination button { background: white; border: 1px solid var(--border);
+    padding: 5px 11px; border-radius: 5px; cursor: pointer; font-size: 12px;
+    margin: 0 3px; font-family: inherit; }
+  .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pagination button:not(:disabled):hover { background: var(--teal-soft);
+    border-color: var(--teal); }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state h2 { font-family: 'Fraunces', serif; font-weight: 500;
+    color: var(--dark-grey); margin-bottom: 8px; }
+  .error-box { background: #fde0e1; border-left: 4px solid var(--red);
+    padding: 14px 18px; border-radius: 8px; color: #6b1f20;
+    font-size: 13px; margin-bottom: 20px; }
+  .error-box strong { display: block; margin-bottom: 4px; }
+  .warn-pill { display: inline-block; background: #fef3c7; color: #8a6d00;
+    font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 6px;
+    font-weight: 600; }
+
+  /* MODAL */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(20,30,32,0.55);
+    display: none; align-items: center; justify-content: center; z-index: 1000;
+    padding: 20px; backdrop-filter: blur(2px); }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 480px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25); max-height: 90vh; overflow-y: auto; }
+  .modal-header { padding: 20px 24px 12px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center; }
+  .modal-header h2 { margin: 0; font-family: 'Fraunces', serif; font-weight: 500;
+    font-size: 20px; color: var(--dark-green); letter-spacing: -0.3px; }
+  .modal-close { background: none; border: none; font-size: 24px; color: var(--muted);
+    cursor: pointer; padding: 0 4px; line-height: 1; }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 20px 24px; }
+  .form-row { margin-bottom: 14px; }
+  .form-row label { display: block; font-size: 12px; font-weight: 600;
+    color: var(--dark-grey); margin-bottom: 4px; text-transform: uppercase;
+    letter-spacing: 0.4px; }
+  .form-row label .req { color: var(--red); }
+  .form-row input, .form-row select, .form-row textarea {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 14px; font-family: inherit; color: var(--text);
+    background: white; }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
+    outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+  .form-row textarea { min-height: 60px; resize: vertical; }
+  .form-row .hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .type-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .type-toggle button { padding: 10px; border: 1.5px solid var(--border);
+    background: white; border-radius: 6px; cursor: pointer; font-family: inherit;
+    font-size: 13px; font-weight: 600; color: var(--muted); transition: all 0.15s; }
+  .type-toggle button:hover { border-color: var(--teal); }
+  .type-toggle button.active.in { background: var(--light-green); color: white; border-color: var(--light-green); }
+  .type-toggle button.active.out { background: var(--red); color: white; border-color: var(--red); }
+  .modal-footer { padding: 12px 24px 20px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 8px; }
+  .btn { padding: 9px 18px; border: 1px solid var(--border); background: white;
+    border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 13px;
+    font-weight: 500; color: var(--text); transition: all 0.15s; }
+  .btn:hover { background: var(--bg); }
+  .btn.primary { background: var(--dark-green); border-color: var(--dark-green); color: white; }
+  .btn.primary:hover { background: var(--teal); border-color: var(--teal); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* TOAST */
+  .toast-stack { position: fixed; bottom: 24px; right: 24px; z-index: 2000;
+    display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .toast { background: white; border-left: 4px solid var(--teal);
+    border: 1px solid var(--border); border-left-width: 4px;
+    padding: 12px 18px; border-radius: 8px; font-size: 13px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12); min-width: 240px; max-width: 360px;
+    animation: toastIn 0.25s ease-out; pointer-events: auto; }
+  .toast.success { border-left-color: var(--light-green); }
+  .toast.error { border-left-color: var(--red); }
+  .toast strong { display: block; margin-bottom: 2px; font-weight: 600; }
+  .toast .toast-msg { color: var(--muted); font-size: 12px; }
+  @keyframes toastIn { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  footer { text-align: center; padding: 30px 20px 10px; font-size: 12px; color: var(--muted); }
+  footer a { color: var(--teal); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-mark">B</div>
+      <div>
+        <h1>BROCK Storage Inventory</h1>
+        <div class="subtitle">HISD · Family and Community Engagement</div>
+      </div>
+    </div>
+    <div>
+      <div class="meta">Last loaded: <strong id="last-loaded">—</strong></div>
+      <div class="header-actions">
+        <button class="header-btn primary" id="btn-log-tx">➕ Log Transaction</button>
+        <button class="header-btn" id="btn-add-item">📦 Add New Item</button>
+        <button class="header-btn ghost" id="btn-refresh">↻ Refresh</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="config-banner" class="config-banner" style="display:none;">
+    <strong>⚙ Setup needed:</strong> Open <code>index.html</code> and configure <code>INVENTORY_CSV_URL</code>, <code>TRANSACTIONS_CSV_URL</code>, and <code>APPS_SCRIPT_URL</code>. See README.
+  </div>
+
+  <div id="error-container"></div>
+
+  <div id="content" style="display:none;">
+
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Unique Items</div><div class="kpi-value" id="kpi-skus">—</div><div class="kpi-sub" id="kpi-skus-sub">—</div></div>
+      <div class="kpi success"><div class="kpi-label">Total Units in Stock</div><div class="kpi-value" id="kpi-units">—</div><div class="kpi-sub">across all categories</div></div>
+      <div class="kpi warn"><div class="kpi-label">Low Stock</div><div class="kpi-value" id="kpi-low">—</div><div class="kpi-sub">at or below reorder threshold</div></div>
+      <div class="kpi danger"><div class="kpi-label">Out of Stock</div><div class="kpi-value" id="kpi-out">—</div><div class="kpi-sub">need to reorder</div></div>
+      <div class="kpi"><div class="kpi-label">Transactions (30d)</div><div class="kpi-value" id="kpi-tx">—</div><div class="kpi-sub" id="kpi-tx-sub">—</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Stock Distribution by Category</h3>
+        <div class="chart-wrap"><canvas id="chart-category"></canvas></div>
+      </div>
+      <div class="card alerts-card">
+        <h3>Reorder Alerts</h3>
+        <div id="alerts-list"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Top 10 Items by Quantity</h3>
+        <div class="chart-wrap"><canvas id="chart-top"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Transactions — Last 30 Days</h3>
+        <div class="chart-wrap"><canvas id="chart-tx"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:22px;">
+      <h3>Inventory</h3>
+      <div class="filter-bar">
+        <input type="text" id="search" placeholder="Search item, variant, location…" />
+        <select id="filter-category"><option value="">All categories</option></select>
+        <select id="filter-status">
+          <option value="">All statuses</option>
+          <option value="ok">In stock</option>
+          <option value="low">Low stock</option>
+          <option value="out">Out of stock</option>
+        </select>
+      </div>
+      <div class="table-scroll">
+        <table id="inv-table">
+          <thead>
+            <tr>
+              <th data-sort="item_name">Item <span class="sort-arrow">↕</span></th>
+              <th data-sort="variant">Variant <span class="sort-arrow">↕</span></th>
+              <th data-sort="category">Category <span class="sort-arrow">↕</span></th>
+              <th data-sort="qty">Current <span class="sort-arrow">↕</span></th>
+              <th data-sort="threshold">Reorder At <span class="sort-arrow">↕</span></th>
+              <th data-sort="location">Location <span class="sort-arrow">↕</span></th>
+              <th data-sort="last_restocked">Last Restocked <span class="sort-arrow">↕</span></th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inv-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Recent Transactions <span id="tx-warn-count" style="display:none;" class="warn-pill"></span></h3>
+      <div class="filter-bar">
+        <input type="text" id="tx-search" placeholder="Search item, person, reason…" />
+        <select id="tx-type-filter">
+          <option value="">All types</option>
+          <option value="IN">IN</option>
+          <option value="OUT">OUT</option>
+        </select>
+      </div>
+      <div class="table-scroll">
+        <table id="tx-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Item</th><th>Variant</th><th>Type</th><th>Qty</th>
+              <th>Reason</th><th>Person</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="tx-body"></tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span id="tx-count">—</span>
+        <div>
+          <button id="tx-prev">‹ Prev</button>
+          <span id="tx-page-info">—</span>
+          <button id="tx-next">Next ›</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="empty-state" class="empty-state" style="display:none;">
+    <h2>No inventory data yet</h2>
+    <p>Click <strong>📦 Add New Item</strong> above to start, or add rows directly in the Google Sheet.</p>
+  </div>
+
+</main>
+
+<!-- LOG TRANSACTION MODAL -->
+<div class="modal-backdrop" id="modal-tx">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Log Transaction</h2>
+      <button class="modal-close" data-close="modal-tx">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>Type <span class="req">*</span></label>
+        <div class="type-toggle">
+          <button type="button" id="tx-type-out" class="active out" data-type="OUT">↓ OUT (taken/used)</button>
+          <button type="button" id="tx-type-in" data-type="IN">↑ IN (received)</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Item <span class="req">*</span></label>
+        <select id="tx-item-select"><option value="">— select an item —</option></select>
+        <div class="hint">Items come from your Inventory tab. Don't see one? Use "Add New Item" first.</div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Quantity <span class="req">*</span></label>
+          <input type="number" id="tx-qty" min="1" step="1" placeholder="e.g., 5" />
+          <div class="hint" id="tx-stock-hint" style="color:var(--muted);"></div>
+        </div>
+        <div class="form-row">
+          <label>Date</label>
+          <input type="date" id="tx-date" />
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Reason</label>
+          <select id="tx-reason">
+            <option value="">— select —</option>
+            <option>Withdrawal</option>
+            <option>Restock</option>
+            <option>Event</option>
+            <option>Damaged</option>
+            <option>Gift</option>
+            <option>Correction</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Person</label>
+          <input type="text" id="tx-person" placeholder="Your name" />
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Notes</label>
+        <textarea id="tx-notes" placeholder="Optional context"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" data-close="modal-tx">Cancel</button>
+      <button class="btn primary" id="tx-save">Save Transaction</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD NEW ITEM MODAL -->
+<div class="modal-backdrop" id="modal-item">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Add New Item</h2>
+      <button class="modal-close" data-close="modal-item">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>Item Name <span class="req">*</span></label>
+        <input type="text" id="item-name" placeholder="e.g., Pen — Blue, T-Shirt, FACE Bag (Cloth)" />
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Variant</label>
+          <input type="text" id="item-variant" placeholder="e.g., Medium, Yellow, AA" />
+          <div class="hint">Leave blank if N/A.</div>
+        </div>
+        <div class="form-row">
+          <label>Category <span class="req">*</span></label>
+          <select id="item-category">
+            <option value="">— select —</option>
+            <option>Office Supplies</option>
+            <option>Apparel</option>
+            <option>FACE Materials</option>
+            <option>Event Supplies</option>
+            <option>First Aid</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Unit</label>
+          <input type="text" id="item-unit" placeholder="each, box, pack, ream" />
+        </div>
+        <div class="form-row">
+          <label>Storage Location</label>
+          <input type="text" id="item-location" placeholder="e.g., A3, Bin-12" />
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Opening Quantity <span class="req">*</span></label>
+          <input type="number" id="item-opening" min="0" step="1" placeholder="What you have now" />
+        </div>
+        <div class="form-row">
+          <label>Reorder Threshold</label>
+          <input type="number" id="item-threshold" min="0" step="1" placeholder="When to flag" />
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Notes</label>
+        <textarea id="item-notes" placeholder="Optional"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" data-close="modal-item">Cancel</button>
+      <button class="btn primary" id="item-save">Add Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK ADJUST MODAL (from inventory row) -->
+<div class="modal-backdrop" id="modal-adjust">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="adjust-title">Adjust Quantity</h2>
+      <button class="modal-close" data-close="modal-adjust">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="adjust-info" style="background:var(--teal-soft);padding:10px 14px;border-radius:6px;margin-bottom:14px;font-size:13px;"></div>
+      <div class="form-row">
+        <label>Type <span class="req">*</span></label>
+        <div class="type-toggle">
+          <button type="button" id="adj-type-out" class="active out" data-type="OUT">↓ OUT</button>
+          <button type="button" id="adj-type-in" data-type="IN">↑ IN</button>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div class="form-row">
+          <label>Quantity <span class="req">*</span></label>
+          <input type="number" id="adj-qty" min="1" step="1" placeholder="e.g., 5" />
+          <div class="hint" id="adj-stock-hint" style="color:var(--muted);"></div>
+        </div>
+        <div class="form-row">
+          <label>Reason</label>
+          <select id="adj-reason">
+            <option value="">— select —</option>
+            <option>Withdrawal</option>
+            <option>Restock</option>
+            <option>Event</option>
+            <option>Damaged</option>
+            <option>Correction</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Person</label>
+        <input type="text" id="adj-person" placeholder="Your name" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" data-close="modal-adjust">Cancel</button>
+      <button class="btn primary" id="adj-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toast-stack"></div>
+
+<footer>BROCK Storage · HISD FACE</footer>
+
+<script>
+/* ============================================================
+   CONFIG — replace all three
+   ============================================================ */
+const INVENTORY_CSV_URL    = "REPLACE_WITH_INVENTORY_CSV_URL";
+const TRANSACTIONS_CSV_URL = "REPLACE_WITH_TRANSACTIONS_CSV_URL";
+const APPS_SCRIPT_URL      = "REPLACE_WITH_APPS_SCRIPT_URL";
+
+/* STATE */
+let inventory = [];
+let transactions = [];
+let unmatchedTxCount = 0;
+let categoryChart, topChart, txChart;
+let invSort = { key: 'item_name', dir: 1 };
+let txPage = 0;
+const TX_PAGE_SIZE = 25;
+let currentTxType = 'OUT';
+let currentAdjType = 'OUT';
+let currentAdjItem = null;
+let lastUsedPerson = '';
+
+try {
+  const stored = sessionStorage.getItem('brock_last_person');
+  if (stored) lastUsedPerson = stored;
+} catch (e) {}
+
+/* ============================================================
+   LOADING
+   ============================================================ */
+function loadData() {
+  if (INVENTORY_CSV_URL.startsWith('REPLACE_') || TRANSACTIONS_CSV_URL.startsWith('REPLACE_')) {
+    document.getElementById('config-banner').style.display = 'block';
+    document.getElementById('content').style.display = 'none';
+    document.getElementById('empty-state').style.display = 'none';
+    return;
+  }
+  document.getElementById('config-banner').style.display = 'none';
+  document.getElementById('error-container').innerHTML = '';
+
+  Promise.all([fetchCSV(INVENTORY_CSV_URL), fetchCSV(TRANSACTIONS_CSV_URL)])
+    .then(([invRows, txRows]) => {
+      inventory = parseInventory(invRows, txRows);
+      transactions = parseTransactions(txRows);
+      document.getElementById('last-loaded').textContent = new Date().toLocaleTimeString();
+      if (inventory.length === 0) {
+        document.getElementById('empty-state').style.display = 'block';
+        document.getElementById('content').style.display = 'none';
+      } else {
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+        render();
+      }
+    }).catch(err => {
+      showError("Couldn't load data.", err.message + "<br><br>Make sure your CSV links are published correctly.");
+    });
+}
+
+function fetchCSV(url) {
+  // bust cache so refreshes after writes show new data
+  const sep = url.includes('?') ? '&' : '?';
+  const cacheBust = `${sep}_cb=${Date.now()}`;
+  return new Promise((resolve, reject) => {
+    Papa.parse(url + cacheBust, {
+      download: true, header: true, skipEmptyLines: true,
+      complete: r => resolve(r.data), error: e => reject(e)
+    });
+  });
+}
+
+function showError(title, body) {
+  document.getElementById('error-container').innerHTML =
+    `<div class="error-box"><strong>${title}</strong>${body}</div>`;
+}
+
+/* ============================================================
+   PARSING
+   ============================================================ */
+function num(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  const n = parseFloat(String(v).replace(/,/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+function getField(row, ...names) {
+  for (const n of names) {
+    if (row[n] !== undefined) return row[n];
+    const lower = n.toLowerCase().trim();
+    for (const k of Object.keys(row)) {
+      if (k.toLowerCase().trim() === lower) return row[k];
+    }
+  }
+  return '';
+}
+function makeKey(name, variant) {
+  return `${(name || '').toString().trim()}||${(variant || '').toString().trim()}`;
+}
+
+function parseInventory(invRows, txRows) {
+  const invKeys = new Set();
+  invRows.forEach(r => {
+    const name = getField(r, 'Item Name').toString().trim();
+    if (name) invKeys.add(makeKey(name, getField(r, 'Variant')));
+  });
+  const txByKey = {};
+  unmatchedTxCount = 0;
+  txRows.forEach(t => {
+    const name = getField(t, 'Item Name').toString().trim();
+    if (!name) return;
+    const key = makeKey(name, getField(t, 'Variant'));
+    if (!invKeys.has(key)) { unmatchedTxCount++; return; }
+    const type = getField(t, 'Type').toString().trim().toUpperCase();
+    const qty = num(getField(t, 'Quantity'));
+    if (!txByKey[key]) txByKey[key] = { in: 0, out: 0, lastIn: null };
+    if (type === 'IN') {
+      txByKey[key].in += qty;
+      const d = parseDate(getField(t, 'Date'));
+      if (d && (!txByKey[key].lastIn || d > txByKey[key].lastIn)) txByKey[key].lastIn = d;
+    } else if (type === 'OUT') {
+      txByKey[key].out += qty;
+    }
+  });
+  return invRows
+    .filter(r => getField(r, 'Item Name').toString().trim() !== '')
+    .map(r => {
+      const name = getField(r, 'Item Name').toString().trim();
+      const variant = getField(r, 'Variant').toString().trim();
+      const key = makeKey(name, variant);
+      const opening = num(getField(r, 'Opening Quantity'));
+      const tx = txByKey[key] || { in: 0, out: 0, lastIn: null };
+      const current = opening + tx.in - tx.out;
+      const threshold = num(getField(r, 'Reorder Threshold'));
+      let status = 'ok';
+      if (current <= 0) status = 'out';
+      else if (current <= threshold) status = 'low';
+      return {
+        item_name: name, variant: variant,
+        category: getField(r, 'Category').toString().trim() || 'Uncategorized',
+        unit: getField(r, 'Unit').toString().trim(),
+        opening: opening, qty: current, threshold: threshold,
+        location: getField(r, 'Storage Location').toString().trim(),
+        last_restocked: tx.lastIn ? formatDate(tx.lastIn) : '',
+        notes: getField(r, 'Notes').toString().trim(),
+        status: status, key: key
+      };
+    });
+}
+function parseTransactions(rows) {
+  return rows
+    .filter(r => getField(r, 'Item Name').toString().trim() !== '')
+    .map(r => ({
+      date: parseDate(getField(r, 'Date')),
+      item_name: getField(r, 'Item Name').toString().trim(),
+      variant: getField(r, 'Variant').toString().trim(),
+      type: getField(r, 'Type').toString().trim().toUpperCase(),
+      qty: num(getField(r, 'Quantity')),
+      reason: getField(r, 'Reason').toString().trim(),
+      person: getField(r, 'Person').toString().trim(),
+      notes: getField(r, 'Notes').toString().trim()
+    }))
+    .sort((a, b) => (b.date || 0) - (a.date || 0));
+}
+function parseDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  const d = new Date(v);
+  if (!isNaN(d.getTime())) return d;
+  return null;
+}
+function formatDate(d) { return d ? d.toISOString().slice(0, 10) : ''; }
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render() {
+  renderKPIs();
+  renderCategoryChart();
+  renderTopChart();
+  renderTxChart();
+  renderAlerts();
+  populateCategoryFilter();
+  renderInventoryTable();
+  renderTxTable();
+  populateItemDropdown();
+  const warn = document.getElementById('tx-warn-count');
+  if (unmatchedTxCount > 0) {
+    warn.style.display = 'inline-block';
+    warn.textContent = `${unmatchedTxCount} unmatched`;
+    warn.title = `${unmatchedTxCount} transaction(s) reference items not in your Inventory tab.`;
+  } else { warn.style.display = 'none'; }
+}
+function renderKPIs() {
+  const skus = inventory.length;
+  const totalUnits = inventory.reduce((s, i) => s + Math.max(0, i.qty), 0);
+  const lowCount = inventory.filter(i => i.status === 'low').length;
+  const outCount = inventory.filter(i => i.status === 'out').length;
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+  const recentTx = transactions.filter(t => t.date && t.date >= cutoff);
+  const recentIn = recentTx.filter(t => t.type === 'IN').length;
+  const recentOut = recentTx.filter(t => t.type === 'OUT').length;
+  const cats = new Set(inventory.map(i => i.category));
+  document.getElementById('kpi-skus').textContent = skus.toLocaleString();
+  document.getElementById('kpi-skus-sub').textContent = `${cats.size} categor${cats.size === 1 ? 'y' : 'ies'}`;
+  document.getElementById('kpi-units').textContent = totalUnits.toLocaleString();
+  document.getElementById('kpi-low').textContent = lowCount.toLocaleString();
+  document.getElementById('kpi-out').textContent = outCount.toLocaleString();
+  document.getElementById('kpi-tx').textContent = recentTx.length.toLocaleString();
+  document.getElementById('kpi-tx-sub').textContent = `${recentIn} in · ${recentOut} out`;
+}
+const HISD_PALETTE = ['#00a3af','#006f5b','#6db83d','#4975bd','#484f99','#f9d04e','#d96364','#24383c'];
+function renderCategoryChart() {
+  const map = {};
+  inventory.forEach(i => { map[i.category] = (map[i.category] || 0) + Math.max(0, i.qty); });
+  const labels = Object.keys(map);
+  const data = labels.map(l => map[l]);
+  if (categoryChart) categoryChart.destroy();
+  categoryChart = new Chart(document.getElementById('chart-category'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: labels.map((_, i) => HISD_PALETTE[i % HISD_PALETTE.length]), borderWidth: 2, borderColor: '#fff' }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { size: 11, family: 'Inter' }, boxWidth: 10 } } } }
+  });
+}
+function renderTopChart() {
+  const top = [...inventory].filter(i => i.qty > 0).sort((a, b) => b.qty - a.qty).slice(0, 10);
+  if (topChart) topChart.destroy();
+  topChart = new Chart(document.getElementById('chart-top'), {
+    type: 'bar',
+    data: { labels: top.map(i => i.item_name + (i.variant ? ` · ${i.variant}` : '')), datasets: [{ label: 'Quantity', data: top.map(i => i.qty), backgroundColor: '#00a3af', borderRadius: 4 }] },
+    options: { maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } },
+      scales: { x: { grid: { color: '#eef3f4' }, ticks: { font: { size: 11 } } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } } }
+  });
+}
+function renderTxChart() {
+  const buckets = {};
+  const today = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    buckets[formatDate(d)] = { in: 0, out: 0 };
+  }
+  transactions.forEach(t => {
+    if (!t.date) return;
+    const key = formatDate(t.date);
+    if (buckets[key]) {
+      if (t.type === 'IN') buckets[key].in += t.qty;
+      else if (t.type === 'OUT') buckets[key].out += t.qty;
+    }
+  });
+  const labels = Object.keys(buckets);
+  if (txChart) txChart.destroy();
+  txChart = new Chart(document.getElementById('chart-tx'), {
+    type: 'line',
+    data: { labels: labels.map(l => l.slice(5)),
+      datasets: [
+        { label: 'In', data: labels.map(l => buckets[l].in), borderColor: '#6db83d', backgroundColor: 'rgba(109,184,61,0.12)', tension: 0.3, fill: true, borderWidth: 2 },
+        { label: 'Out', data: labels.map(l => buckets[l].out), borderColor: '#d96364', backgroundColor: 'rgba(217,99,100,0.12)', tension: 0.3, fill: true, borderWidth: 2 }
+      ] },
+    options: { maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 10 } } },
+      scales: { x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
+        y: { grid: { color: '#eef3f4' }, ticks: { font: { size: 11 } }, beginAtZero: true } } }
+  });
+}
+function renderAlerts() {
+  const alerts = inventory.filter(i => i.status !== 'ok')
+    .sort((a, b) => {
+      if (a.status !== b.status) return a.status === 'out' ? -1 : 1;
+      return a.qty - b.qty;
+    });
+  const list = document.getElementById('alerts-list');
+  if (alerts.length === 0) {
+    list.innerHTML = '<div class="alert-row empty">All items above reorder threshold ✓</div>';
+    return;
+  }
+  list.innerHTML = alerts.slice(0, 8).map(i => `
+    <div class="alert-row">
+      <div>
+        <div style="font-weight:500;">${escapeHtml(i.item_name)}${i.variant ? ` <span style="color:var(--muted);">· ${escapeHtml(i.variant)}</span>` : ''}</div>
+        <div style="font-size:11px;color:var(--muted);">${escapeHtml(i.category)}${i.location ? ` · ${escapeHtml(i.location)}` : ''}</div>
+      </div>
+      <span class="alert-qty">${i.qty}</span>
+      <span class="pill ${i.status}">${i.status === 'out' ? 'OUT' : 'LOW'}</span>
+    </div>
+  `).join('');
+  if (alerts.length > 8) {
+    list.innerHTML += `<div class="alert-row" style="justify-content:center;color:var(--muted);font-size:12px;">+ ${alerts.length - 8} more</div>`;
+  }
+}
+function populateCategoryFilter() {
+  const cats = [...new Set(inventory.map(i => i.category))].sort();
+  const sel = document.getElementById('filter-category');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  sel.value = current;
+}
+function populateItemDropdown() {
+  const sel = document.getElementById('tx-item-select');
+  const sorted = [...inventory].sort((a, b) => a.item_name.localeCompare(b.item_name));
+  sel.innerHTML = '<option value="">— select an item —</option>' + sorted.map(i => {
+    const label = i.item_name + (i.variant ? ` — ${i.variant}` : '') + ` (${i.qty} ${i.unit || ''})`;
+    return `<option value="${escapeHtml(i.key)}">${escapeHtml(label)}</option>`;
+  }).join('');
+}
+function renderInventoryTable() {
+  const search = document.getElementById('search').value.toLowerCase().trim();
+  const cat = document.getElementById('filter-category').value;
+  const status = document.getElementById('filter-status').value;
+  let rows = inventory.filter(i => {
+    if (cat && i.category !== cat) return false;
+    if (status && i.status !== status) return false;
+    if (search) {
+      const hay = `${i.item_name} ${i.variant} ${i.location} ${i.category}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  rows.sort((a, b) => {
+    const k = invSort.key;
+    let av = a[k], bv = b[k];
+    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * invSort.dir;
+    av = (av || '').toString().toLowerCase();
+    bv = (bv || '').toString().toLowerCase();
+    return av.localeCompare(bv) * invSort.dir;
+  });
+  const body = document.getElementById('inv-body');
+  if (rows.length === 0) {
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;font-style:italic;">No items match these filters.</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(i => `
+    <tr>
+      <td style="font-weight:500;">${escapeHtml(i.item_name)}</td>
+      <td>${escapeHtml(i.variant) || '<span style="color:var(--muted);">—</span>'}</td>
+      <td>${escapeHtml(i.category)}</td>
+      <td class="qty-${i.status}">${i.qty.toLocaleString()} ${i.unit ? `<span style="color:var(--muted);font-weight:400;font-size:11px;">${escapeHtml(i.unit)}</span>` : ''}</td>
+      <td>${i.threshold || '—'}</td>
+      <td>${escapeHtml(i.location)}</td>
+      <td style="font-size:12px;color:var(--muted);">${escapeHtml(i.last_restocked)}</td>
+      <td><button class="btn" style="padding:4px 10px;font-size:11px;" data-adjust="${escapeHtml(i.key)}">Adjust</button></td>
+    </tr>
+  `).join('');
+  document.querySelectorAll('#inv-table thead th').forEach(th => {
+    th.classList.toggle('sorted', th.dataset.sort === invSort.key);
+  });
+  document.querySelectorAll('[data-adjust]').forEach(btn => {
+    btn.addEventListener('click', () => openAdjust(btn.dataset.adjust));
+  });
+}
+function renderTxTable() {
+  const search = document.getElementById('tx-search').value.toLowerCase().trim();
+  const type = document.getElementById('tx-type-filter').value;
+  const filtered = transactions.filter(t => {
+    if (type && t.type !== type) return false;
+    if (search) {
+      const hay = `${t.item_name} ${t.variant} ${t.person} ${t.reason} ${t.notes}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / TX_PAGE_SIZE));
+  if (txPage >= totalPages) txPage = totalPages - 1;
+  if (txPage < 0) txPage = 0;
+  const slice = filtered.slice(txPage * TX_PAGE_SIZE, (txPage + 1) * TX_PAGE_SIZE);
+  const body = document.getElementById('tx-body');
+  if (filtered.length === 0) {
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;font-style:italic;">No transactions match these filters.</td></tr>';
+  } else {
+    body.innerHTML = slice.map(t => `
+      <tr>
+        <td style="font-size:12px;">${formatDate(t.date) || '—'}</td>
+        <td>${escapeHtml(t.item_name)}</td>
+        <td style="color:var(--muted);">${escapeHtml(t.variant) || '—'}</td>
+        <td><span class="pill" style="background:${t.type === 'IN' ? '#e6f4d8' : '#fde0e1'};color:${t.type === 'IN' ? '#3d6b1a' : '#6b1f20'};">${escapeHtml(t.type)}</span></td>
+        <td style="font-weight:500;">${t.qty.toLocaleString()}</td>
+        <td>${escapeHtml(t.reason)}</td>
+        <td>${escapeHtml(t.person)}</td>
+        <td style="color:var(--muted);font-size:12px;">${escapeHtml(t.notes)}</td>
+      </tr>
+    `).join('');
+  }
+  document.getElementById('tx-count').textContent = `${filtered.length.toLocaleString()} transaction${filtered.length === 1 ? '' : 's'}`;
+  document.getElementById('tx-page-info').textContent = `Page ${txPage + 1} of ${totalPages}`;
+  document.getElementById('tx-prev').disabled = txPage === 0;
+  document.getElementById('tx-next').disabled = txPage >= totalPages - 1;
+}
+function escapeHtml(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ============================================================
+   WRITE-BACK to Apps Script
+   ============================================================ */
+async function callAppsScript(payload) {
+  if (APPS_SCRIPT_URL.startsWith('REPLACE_')) {
+    throw new Error('Apps Script URL is not configured. See README.');
+  }
+  // Use text/plain content-type to avoid CORS preflight (Apps Script handles it)
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Unknown error from Apps Script');
+  return data;
+}
+
+function toast(title, msg, kind) {
+  const stack = document.getElementById('toast-stack');
+  const el = document.createElement('div');
+  el.className = `toast ${kind || ''}`;
+  el.innerHTML = `<strong>${escapeHtml(title)}</strong><div class="toast-msg">${escapeHtml(msg || '')}</div>`;
+  stack.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 3500);
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('[data-close]').forEach(b => {
+  b.addEventListener('click', () => closeModal(b.dataset.close));
+});
+document.querySelectorAll('.modal-backdrop').forEach(bd => {
+  bd.addEventListener('click', e => { if (e.target === bd) bd.classList.remove('open'); });
+});
+
+// Type toggles
+function setupToggle(outId, inId, setter) {
+  document.getElementById(outId).addEventListener('click', () => {
+    setter('OUT');
+    document.getElementById(outId).classList.add('active', 'out');
+    document.getElementById(outId).classList.remove();
+    document.getElementById(inId).classList.remove('active', 'in');
+  });
+  document.getElementById(inId).addEventListener('click', () => {
+    setter('IN');
+    document.getElementById(inId).classList.add('active', 'in');
+    document.getElementById(outId).classList.remove('active', 'out');
+  });
+}
+setupToggle('tx-type-out', 'tx-type-in', v => { currentTxType = v; updateTxStockHint(); });
+setupToggle('adj-type-out', 'adj-type-in', v => { currentAdjType = v; updateAdjStockHint(); });
+
+// Log Transaction
+document.getElementById('btn-log-tx').addEventListener('click', () => {
+  document.getElementById('tx-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('tx-qty').value = '';
+  document.getElementById('tx-notes').value = '';
+  document.getElementById('tx-item-select').value = '';
+  document.getElementById('tx-reason').value = '';
+  document.getElementById('tx-person').value = lastUsedPerson;
+  document.getElementById('tx-stock-hint').textContent = '';
+  document.getElementById('tx-qty').removeAttribute('max');
+  // reset toggle to OUT (most common)
+  currentTxType = 'OUT';
+  document.getElementById('tx-type-out').classList.add('active', 'out');
+  document.getElementById('tx-type-in').classList.remove('active', 'in');
+  openModal('modal-tx');
+});
+
+// Update stock hint live as item or type changes in Log Transaction modal
+function updateTxStockHint() {
+  const itemKey = document.getElementById('tx-item-select').value;
+  const hint = document.getElementById('tx-stock-hint');
+  const qtyInput = document.getElementById('tx-qty');
+  if (!itemKey) { hint.textContent = ''; qtyInput.removeAttribute('max'); return; }
+  const item = inventory.find(i => i.key === itemKey);
+  if (!item) { hint.textContent = ''; qtyInput.removeAttribute('max'); return; }
+  if (currentTxType === 'OUT') {
+    const available = Math.max(0, item.qty);
+    hint.innerHTML = `<strong style="color:${available === 0 ? 'var(--red)' : 'var(--dark-green)'};">Available: ${available}</strong> ${item.unit || ''}`;
+    qtyInput.setAttribute('max', available);
+  } else {
+    hint.innerHTML = `<span style="color:var(--muted);">Currently: ${item.qty} ${item.unit || ''}</span>`;
+    qtyInput.removeAttribute('max');
+  }
+}
+document.getElementById('tx-item-select').addEventListener('change', updateTxStockHint);
+
+document.getElementById('tx-save').addEventListener('click', async () => {
+  const itemKey = document.getElementById('tx-item-select').value;
+  const qty = parseFloat(document.getElementById('tx-qty').value);
+  if (!itemKey) { toast('Missing field', 'Pick an item.', 'error'); return; }
+  if (!qty || qty <= 0) { toast('Missing field', 'Enter a positive quantity.', 'error'); return; }
+  const item = inventory.find(i => i.key === itemKey);
+  if (!item) { toast('Unknown item', 'Item not found.', 'error'); return; }
+  // Stock validation: can't take more OUT than available
+  if (currentTxType === 'OUT' && qty > item.qty) {
+    if (item.qty <= 0) {
+      toast('Out of stock', `${item.item_name}${item.variant ? ' — ' + item.variant : ''} has 0 in stock. Nothing to take.`, 'error');
+    } else {
+      toast('Not enough in stock', `Only ${item.qty} ${item.unit || ''} available. You tried to take ${qty}.`, 'error');
+    }
+    return;
+  }
+  const person = document.getElementById('tx-person').value.trim();
+  const btn = document.getElementById('tx-save');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await callAppsScript({
+      action: 'addTransaction',
+      date: document.getElementById('tx-date').value || new Date().toISOString().slice(0, 10),
+      itemName: item.item_name,
+      variant: item.variant,
+      type: currentTxType,
+      quantity: qty,
+      reason: document.getElementById('tx-reason').value,
+      person: person,
+      notes: document.getElementById('tx-notes').value
+    });
+    if (person) {
+      lastUsedPerson = person;
+      try { sessionStorage.setItem('brock_last_person', person); } catch (e) {}
+    }
+    toast('Transaction saved', `${currentTxType} ${qty} · ${item.item_name}`, 'success');
+    closeModal('modal-tx');
+    setTimeout(loadData, 800); // small delay so Sheets has time to recalculate
+  } catch (e) {
+    toast('Save failed', e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Transaction';
+  }
+});
+
+// Add Item
+document.getElementById('btn-add-item').addEventListener('click', () => {
+  ['item-name','item-variant','item-unit','item-location','item-opening','item-threshold','item-notes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('item-category').value = '';
+  openModal('modal-item');
+});
+
+document.getElementById('item-save').addEventListener('click', async () => {
+  const name = document.getElementById('item-name').value.trim();
+  const cat = document.getElementById('item-category').value;
+  const opening = parseFloat(document.getElementById('item-opening').value);
+  if (!name) { toast('Missing field', 'Item name is required.', 'error'); return; }
+  if (!cat) { toast('Missing field', 'Pick a category.', 'error'); return; }
+  if (isNaN(opening) || opening < 0) { toast('Missing field', 'Opening quantity must be 0 or more.', 'error'); return; }
+  const variant = document.getElementById('item-variant').value.trim();
+  const dupe = inventory.find(i => i.item_name === name && i.variant === variant);
+  if (dupe) { toast('Duplicate', `"${name}${variant ? ' — ' + variant : ''}" already exists.`, 'error'); return; }
+  const btn = document.getElementById('item-save');
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    await callAppsScript({
+      action: 'addItem',
+      itemName: name,
+      variant: variant,
+      category: cat,
+      unit: document.getElementById('item-unit').value.trim(),
+      opening: opening,
+      threshold: parseFloat(document.getElementById('item-threshold').value) || 0,
+      location: document.getElementById('item-location').value.trim(),
+      notes: document.getElementById('item-notes').value.trim()
+    });
+    toast('Item added', name + (variant ? ` — ${variant}` : ''), 'success');
+    closeModal('modal-item');
+    setTimeout(loadData, 800);
+  } catch (e) {
+    toast('Add failed', e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Add Item';
+  }
+});
+
+function updateAdjStockHint() {
+  const hint = document.getElementById('adj-stock-hint');
+  const qtyInput = document.getElementById('adj-qty');
+  if (!currentAdjItem) { hint.textContent = ''; qtyInput.removeAttribute('max'); return; }
+  if (currentAdjType === 'OUT') {
+    const available = Math.max(0, currentAdjItem.qty);
+    hint.innerHTML = `<strong style="color:${available === 0 ? 'var(--red)' : 'var(--dark-green)'};">Available: ${available}</strong> ${currentAdjItem.unit || ''}`;
+    qtyInput.setAttribute('max', available);
+  } else {
+    hint.innerHTML = `<span style="color:var(--muted);">Currently: ${currentAdjItem.qty} ${currentAdjItem.unit || ''}</span>`;
+    qtyInput.removeAttribute('max');
+  }
+}
+
+// Adjust (from inventory row)
+function openAdjust(itemKey) {
+  const item = inventory.find(i => i.key === itemKey);
+  if (!item) return;
+  currentAdjItem = item;
+  document.getElementById('adjust-title').textContent = item.item_name + (item.variant ? ` — ${item.variant}` : '');
+  document.getElementById('adjust-info').innerHTML = `Current: <strong>${item.qty}</strong> ${item.unit || ''} · Reorder at ${item.threshold || '—'} · ${item.location || ''}`;
+  document.getElementById('adj-qty').value = '';
+  document.getElementById('adj-reason').value = '';
+  document.getElementById('adj-person').value = lastUsedPerson;
+  currentAdjType = 'OUT';
+  document.getElementById('adj-type-out').classList.add('active', 'out');
+  document.getElementById('adj-type-in').classList.remove('active', 'in');
+  updateAdjStockHint();
+  openModal('modal-adjust');
+}
+
+document.getElementById('adj-save').addEventListener('click', async () => {
+  if (!currentAdjItem) return;
+  const qty = parseFloat(document.getElementById('adj-qty').value);
+  if (!qty || qty <= 0) { toast('Missing field', 'Enter a positive quantity.', 'error'); return; }
+  // Stock validation
+  if (currentAdjType === 'OUT' && qty > currentAdjItem.qty) {
+    if (currentAdjItem.qty <= 0) {
+      toast('Out of stock', `${currentAdjItem.item_name}${currentAdjItem.variant ? ' — ' + currentAdjItem.variant : ''} has 0 in stock. Nothing to take.`, 'error');
+    } else {
+      toast('Not enough in stock', `Only ${currentAdjItem.qty} ${currentAdjItem.unit || ''} available. You tried to take ${qty}.`, 'error');
+    }
+    return;
+  }
+  const person = document.getElementById('adj-person').value.trim();
+  const btn = document.getElementById('adj-save');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await callAppsScript({
+      action: 'addTransaction',
+      date: new Date().toISOString().slice(0, 10),
+      itemName: currentAdjItem.item_name,
+      variant: currentAdjItem.variant,
+      type: currentAdjType,
+      quantity: qty,
+      reason: document.getElementById('adj-reason').value,
+      person: person,
+      notes: ''
+    });
+    if (person) {
+      lastUsedPerson = person;
+      try { sessionStorage.setItem('brock_last_person', person); } catch (e) {}
+    }
+    toast('Saved', `${currentAdjType} ${qty} · ${currentAdjItem.item_name}`, 'success');
+    closeModal('modal-adjust');
+    setTimeout(loadData, 800);
+  } catch (e) {
+    toast('Save failed', e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+});
+
+// Filters & sorting
+document.getElementById('search').addEventListener('input', renderInventoryTable);
+document.getElementById('filter-category').addEventListener('change', renderInventoryTable);
+document.getElementById('filter-status').addEventListener('change', renderInventoryTable);
+document.getElementById('tx-search').addEventListener('input', () => { txPage = 0; renderTxTable(); });
+document.getElementById('tx-type-filter').addEventListener('change', () => { txPage = 0; renderTxTable(); });
+document.getElementById('tx-prev').addEventListener('click', () => { txPage--; renderTxTable(); });
+document.getElementById('tx-next').addEventListener('click', () => { txPage++; renderTxTable(); });
+document.querySelectorAll('#inv-table thead th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    if (invSort.key === k) invSort.dir *= -1;
+    else { invSort.key = k; invSort.dir = 1; }
+    renderInventoryTable();
+  });
+});
+document.getElementById('btn-refresh').addEventListener('click', loadData);
+
+loadData();
+</script>
+</body>
+</html>
